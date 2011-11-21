@@ -29,11 +29,31 @@ object json extends JavaTokenParsers {
   
   def value: Parser[Any] = obj | arr | stringLiteral | floatingPointNumber | "null" | "true" | "false"
   
-  def obj: Parser[Any] = "{" ~ repsep(member, ",") ~ "}"
+  def obj: Parser[Map[String, Any]] = "{" ~ repsep(member, ",") ~ "}" ^^ {
+    case _ ~ xs ~ _ => Map(xs: _*)
+  }
   
-  def arr: Parser[Any] = "[" ~ repsep(value, ",") ~ "]"
+  def arr: Parser[Any] = "[" ~ repsep(value, ",") ~ "]" ^^ {
+    case _ ~ xs ~ _ => collection.mutable.Seq(xs: _*)
+  }
   
-  def member: Parser[Any] = stringLiteral ~ ":" ~ value
+  def member: Parser[(String, Any)] = stringLiteral ~ ":" ~ value ^^ {
+    case s ~ _ ~ v => (s, v)
+  }
+  
+  // alternative:
+  
+  def obj2: Parser[Map[String, Any]] = "{" ~> repsep(member, ",") <~ "}" ^^ {
+    case xs => Map(xs: _*)
+  }
+  
+  def arr2: Parser[Any] = "[" ~> repsep(value, ",") <~ "]" ^^ {
+    case xs => collection.mutable.Seq(xs: _*)
+  }
+  
+  def member2: Parser[(String, Any)] = (stringLiteral <~ ":") ~ value ^^ {
+    case s ~ v => (s, v)
+  }
   
   def main(args: Array[String]) {
     val input = """
@@ -49,6 +69,12 @@ object json extends JavaTokenParsers {
     """
     val result = parseAll(json, input)
     println(result)
+    
+    val errinput = """{ "name": John """
+    println(parseAll(json, errinput))
   }
   
 }
+
+
+
